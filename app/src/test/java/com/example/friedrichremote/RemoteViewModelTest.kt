@@ -1,6 +1,5 @@
 package com.example.friedrichremote
 
-import com.example.friedrichremote.ir.AcState
 import com.example.friedrichremote.ir.FanSpeed
 import com.example.friedrichremote.ir.LgAcProtocol
 import com.example.friedrichremote.ir.Mode
@@ -16,8 +15,8 @@ class RemoteViewModelTest {
         val state = vm.state.value
         assertFalse(state.power)
         assertEquals(Mode.COOL, state.mode)
-        assertEquals(24, state.tempCelsius)
-        assertEquals(FanSpeed.AUTO, state.fanSpeed)
+        assertEquals(75, state.tempFahrenheit)
+        assertEquals(FanSpeed.F1, state.fanSpeed)
     }
 
     @Test
@@ -36,67 +35,58 @@ class RemoteViewModelTest {
         assertEquals(Mode.COOL, vm.state.value.mode)
 
         vm.onModePress()
+        assertEquals(Mode.MONEY_SAVER, vm.state.value.mode)
+
+        vm.onModePress()
+        assertEquals(Mode.FAN_ONLY, vm.state.value.mode)
+
+        vm.onModePress()
         assertEquals(Mode.DRY, vm.state.value.mode)
-
-        vm.onModePress()
-        assertEquals(Mode.FAN, vm.state.value.mode)
-
-        vm.onModePress()
-        assertEquals(Mode.HEAT, vm.state.value.mode)
-
-        vm.onModePress()
-        assertEquals(Mode.AUTO, vm.state.value.mode)
 
         vm.onModePress()
         assertEquals(Mode.COOL, vm.state.value.mode)
     }
 
     @Test
+    fun `fan cycles correctly`() {
+        val vm = RemoteViewModel()
+        vm.onPowerToggle()
+        assertEquals(FanSpeed.F1, vm.state.value.fanSpeed)
+
+        vm.onFanSpeedPress()
+        assertEquals(FanSpeed.F2, vm.state.value.fanSpeed)
+
+        vm.onFanSpeedPress()
+        assertEquals(FanSpeed.F3, vm.state.value.fanSpeed)
+
+        vm.onFanSpeedPress()
+        assertEquals(FanSpeed.F1, vm.state.value.fanSpeed)
+    }
+
+    @Test
     fun `temp up increases temperature`() {
         val vm = RemoteViewModel()
         vm.onPowerToggle()
-        assertEquals(24, vm.state.value.tempCelsius)
+        assertEquals(75, vm.state.value.tempFahrenheit)
 
         vm.onTempUp()
-        assertEquals(25, vm.state.value.tempCelsius)
+        assertEquals(76, vm.state.value.tempFahrenheit)
     }
 
     @Test
     fun `temp up stops at max`() {
         val vm = RemoteViewModel()
         vm.onPowerToggle()
-        repeat(20) { vm.onTempUp() }
-        assertEquals(LgAcProtocol.MAX_TEMP_C, vm.state.value.tempCelsius)
+        repeat(100) { vm.onTempUp() }
+        assertEquals(LgAcProtocol.MAX_TEMP_F, vm.state.value.tempFahrenheit)
     }
 
     @Test
     fun `temp down stops at min`() {
         val vm = RemoteViewModel()
         vm.onPowerToggle()
-        repeat(20) { vm.onTempDown() }
-        assertEquals(LgAcProtocol.MIN_TEMP_C, vm.state.value.tempCelsius)
-    }
-
-    @Test
-    fun `fan speed cycles correctly`() {
-        val vm = RemoteViewModel()
-        vm.onPowerToggle()
-        assertEquals(FanSpeed.AUTO, vm.state.value.fanSpeed)
-
-        vm.onFanSpeedPress()
-        assertEquals(FanSpeed.LOW, vm.state.value.fanSpeed)
-
-        vm.onFanSpeedPress()
-        assertEquals(FanSpeed.MEDIUM, vm.state.value.fanSpeed)
-
-        vm.onFanSpeedPress()
-        assertEquals(FanSpeed.HIGH, vm.state.value.fanSpeed)
-
-        vm.onFanSpeedPress()
-        assertEquals(FanSpeed.LOWEST, vm.state.value.fanSpeed)
-
-        vm.onFanSpeedPress()
-        assertEquals(FanSpeed.AUTO, vm.state.value.fanSpeed)
+        repeat(100) { vm.onTempDown() }
+        assertEquals(LgAcProtocol.MIN_TEMP_F, vm.state.value.tempFahrenheit)
     }
 
     @Test
@@ -116,15 +106,29 @@ class RemoteViewModelTest {
 
         vm.onFanSpeedPress()
         assertNotNull(vm.lastPattern.value)
+
+        vm.onSwingToggle()
+        assertNotNull(vm.lastPattern.value)
     }
 
     @Test
-    fun `celsius to fahrenheit conversion is correct`() {
+    fun `swing toggle changes state`() {
         val vm = RemoteViewModel()
-        assertEquals(32, vm.celsiusToFahrenheit(0))
-        assertEquals(75, vm.celsiusToFahrenheit(24))
-        assertEquals(86, vm.celsiusToFahrenheit(30))
-        assertEquals(60, vm.celsiusToFahrenheit(16))
+        vm.onPowerToggle()
+        assertFalse(vm.state.value.swing)
+
+        vm.onSwingToggle()
+        assertTrue(vm.state.value.swing)
+
+        vm.onSwingToggle()
+        assertFalse(vm.state.value.swing)
+    }
+
+    @Test
+    fun `swing toggle while power is off does not change swing`() {
+        val vm = RemoteViewModel()
+        vm.onSwingToggle()
+        assertFalse(vm.state.value.swing)
     }
 
     @Test
@@ -138,8 +142,8 @@ class RemoteViewModelTest {
     @Test
     fun `temp change while power is off does not change temp`() {
         val vm = RemoteViewModel()
-        assertEquals(24, vm.state.value.tempCelsius)
+        assertEquals(75, vm.state.value.tempFahrenheit)
         vm.onTempUp()
-        assertEquals(24, vm.state.value.tempCelsius)  // unchanged when off
+        assertEquals(75, vm.state.value.tempFahrenheit)  // unchanged when off
     }
 }

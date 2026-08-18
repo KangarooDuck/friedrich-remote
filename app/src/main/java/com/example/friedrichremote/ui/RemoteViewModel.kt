@@ -25,7 +25,7 @@ class RemoteViewModel {
             val newPower = !current.power
             if (newPower) {
                 _lastAction.value = "Power ON"
-                _lastPattern.value = LgAcProtocol.buildPattern(current.copy(power = true))
+                _lastPattern.value = LgAcProtocol.buildPowerOnPattern(current.copy(power = true))
             } else {
                 _lastAction.value = "Power OFF"
                 _lastPattern.value = LgAcProtocol.codeToTimingPattern(LgAcProtocol.OFF_COMMAND)
@@ -38,12 +38,12 @@ class RemoteViewModel {
         _state.update { current ->
             if (!current.power) return@update current
             val newMode = when (current.mode) {
-                Mode.COOL -> Mode.DRY
-                Mode.DRY -> Mode.FAN
-                Mode.FAN -> Mode.COOL
-                else -> Mode.COOL
+                Mode.COOL -> Mode.MONEY_SAVER
+                Mode.MONEY_SAVER -> Mode.FAN_ONLY
+                Mode.FAN_ONLY -> Mode.DRY
+                Mode.DRY -> Mode.COOL
             }
-            _lastAction.value = "Mode: ${newMode.name}"
+            _lastAction.value = "Mode: ${newMode.displayName}"
             _lastPattern.value = LgAcProtocol.buildPattern(current.copy(mode = newMode))
             current.copy(mode = newMode)
         }
@@ -52,20 +52,20 @@ class RemoteViewModel {
     fun onTempUp() {
         _state.update { current ->
             if (!current.power) return@update current
-            val newTemp = (current.tempCelsius + 1).coerceAtMost(LgAcProtocol.MAX_TEMP_C)
-            _lastAction.value = "Temp: ${newTemp}°C"
-            _lastPattern.value = LgAcProtocol.buildPattern(current.copy(tempCelsius = newTemp))
-            current.copy(tempCelsius = newTemp)
+            val newTemp = (current.tempFahrenheit + 1).coerceAtMost(LgAcProtocol.MAX_TEMP_F)
+            _lastAction.value = "Temp: ${newTemp}°F"
+            _lastPattern.value = LgAcProtocol.buildPattern(current.copy(tempFahrenheit = newTemp))
+            current.copy(tempFahrenheit = newTemp)
         }
     }
 
     fun onTempDown() {
         _state.update { current ->
             if (!current.power) return@update current
-            val newTemp = (current.tempCelsius - 1).coerceAtLeast(LgAcProtocol.MIN_TEMP_C)
-            _lastAction.value = "Temp: ${newTemp}°C"
-            _lastPattern.value = LgAcProtocol.buildPattern(current.copy(tempCelsius = newTemp))
-            current.copy(tempCelsius = newTemp)
+            val newTemp = (current.tempFahrenheit - 1).coerceAtLeast(LgAcProtocol.MIN_TEMP_F)
+            _lastAction.value = "Temp: ${newTemp}°F"
+            _lastPattern.value = LgAcProtocol.buildPattern(current.copy(tempFahrenheit = newTemp))
+            current.copy(tempFahrenheit = newTemp)
         }
     }
 
@@ -73,18 +73,23 @@ class RemoteViewModel {
         _state.update { current ->
             if (!current.power) return@update current
             val newSpeed = when (current.fanSpeed) {
-                FanSpeed.LOW -> FanSpeed.MEDIUM
-                FanSpeed.MEDIUM -> FanSpeed.HIGH
-                FanSpeed.HIGH -> FanSpeed.LOW
-                else -> FanSpeed.LOW
+                FanSpeed.F1 -> FanSpeed.F2
+                FanSpeed.F2 -> FanSpeed.F3
+                FanSpeed.F3 -> FanSpeed.F1
             }
-            _lastAction.value = "Fan: ${newSpeed.name}"
+            _lastAction.value = "Fan: ${newSpeed.displayName}"
             _lastPattern.value = LgAcProtocol.buildPattern(current.copy(fanSpeed = newSpeed))
             current.copy(fanSpeed = newSpeed)
         }
     }
 
-    fun celsiusToFahrenheit(celsius: Int): Int {
-        return (celsius * 9 / 5) + 32
+    fun onSwingToggle() {
+        _state.update { current ->
+            if (!current.power) return@update current
+            val newSwing = !current.swing
+            _lastAction.value = "Swing ${if (newSwing) "ON" else "OFF"}"
+            _lastPattern.value = LgAcProtocol.codeToTimingPattern(LgAcProtocol.SWING_TOGGLE)
+            current.copy(swing = newSwing)
+        }
     }
 }

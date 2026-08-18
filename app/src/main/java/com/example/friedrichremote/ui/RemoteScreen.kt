@@ -1,29 +1,44 @@
 package com.example.friedrichremote.ui
 
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.friedrichremote.ir.FanSpeed
+import com.example.friedrichremote.ir.AcState
 import com.example.friedrichremote.ir.IrTransmitter
 import com.example.friedrichremote.ir.LgAcProtocol
-import com.example.friedrichremote.ir.Mode
-import com.example.friedrichremote.ir.ProtocolVariant
 
-@OptIn(ExperimentalMaterial3Api::class)
+private val WallBackground = Color(0xFFC6CDD4)
+private val RemoteTop = Color(0xFFF6F6F6)
+private val RemoteBottom = Color(0xFFD9D9D9)
+private val RemoteBorder = Color(0xFFB8B8B8)
+
+private val LcdBackground = Color(0xFF16241E)
+private val LcdBezel = Color(0xFF0A0A0A)
+private val LcdOn = Color(0xFFA9E6C1)
+private val LcdDim = Color(0xFF4B6558)
+
+private val ButtonGrey = Color(0xFFEDEDED)
+private val ButtonBorder = Color(0xFFA9A9A9)
+private val ButtonText = Color(0xFF1A1A1A)
+private val PowerRed = Color(0xFFE5533C)
+
 @Composable
 fun RemoteScreen() {
     val viewModel = remember { RemoteViewModel() }
@@ -34,8 +49,6 @@ fun RemoteScreen() {
     val hasIr = remember { irTransmitter.hasIrBlaster() }
 
     val snackbarHostState = remember { SnackbarHostState() }
-    var protocolVariant by remember { mutableStateOf(LgAcProtocol.variant) }
-    var powerCode by remember { mutableStateOf(LgAcProtocol.onPowerCode) }
 
     LaunchedEffect(lastAction) {
         if (lastAction.isNotEmpty()) {
@@ -45,127 +58,141 @@ fun RemoteScreen() {
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        containerColor = Color(0xFF0F1923),
-        topBar = {
-            TopAppBar(
-                title = { Text("Friedrich Remote", color = Color.White) },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF0F1923)
-                )
-            )
-        }
+        containerColor = WallBackground
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(horizontal = 24.dp),
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp, vertical = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween
+            verticalArrangement = Arrangement.Center
         ) {
-            DisplayPanel(state, viewModel)
-
-            PowerButton(
-                isOn = state.power,
-                onClick = {
-                    viewModel.onPowerToggle()
-                    viewModel.lastPattern.value?.let { pattern ->
-                        repeat(3) { irTransmitter.transmit(pattern); Thread.sleep(30) }
-                    }
-                }
-            )
-
-            ModeAndFanRow(state, viewModel, irTransmitter)
-
-            TempControl(state, viewModel, irTransmitter)
-
-            StatusBar(hasIr, protocolVariant, powerCode,
-                onToggleVariant = {
-                    val next = if (LgAcProtocol.variant == ProtocolVariant.LG) {
-                        ProtocolVariant.LG2
-                    } else {
-                        ProtocolVariant.LG
-                    }
-                    LgAcProtocol.variant = next
-                    protocolVariant = next
-                },
-                onTogglePowerCode = {
-                    val next = (powerCode + 1) % 4
-                    LgAcProtocol.onPowerCode = next
-                    powerCode = next
-                }
-            )
+            RemoteBody(state, viewModel, irTransmitter)
+            Spacer(modifier = Modifier.height(20.dp))
+            SettingsStrip(hasIr = hasIr)
         }
     }
 }
 
 @Composable
-private fun DisplayPanel(
-    state: com.example.friedrichremote.ir.AcState,
-    viewModel: RemoteViewModel
+private fun RemoteBody(
+    state: AcState,
+    viewModel: RemoteViewModel,
+    irTransmitter: IrTransmitter
 ) {
-    val gradientColors = if (state.power) {
-        listOf(Color(0xFF1A3A5C), Color(0xFF0D2137))
-    } else {
-        listOf(Color(0xFF2A2A2A), Color(0xFF1A1A1A))
-    }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(8.dp, RoundedCornerShape(28.dp))
+            .clip(RoundedCornerShape(28.dp))
+            .background(Brush.verticalGradient(listOf(RemoteTop, RemoteBottom)))
+            .border(1.dp, RemoteBorder, RoundedCornerShape(28.dp))
+            .padding(20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        LcdPanel(state, viewModel)
+        Spacer(modifier = Modifier.height(24.dp))
 
+        PowerButton(
+            isOn = state.power,
+            onClick = {
+                viewModel.onPowerToggle()
+                viewModel.lastPattern.value?.let { irTransmitter.transmit(it) }
+            }
+        )
+        Spacer(modifier = Modifier.height(20.dp))
+
+        ModeFanSwingRow(state, viewModel, irTransmitter)
+        Spacer(modifier = Modifier.height(16.dp))
+
+        TempControl(state, viewModel, irTransmitter)
+    }
+}
+
+@Composable
+private fun LcdPanel(state: AcState, viewModel: RemoteViewModel) {
+    val on = state.power
     Box(
         modifier = Modifier
-            .width(220.dp)
-            .clip(RoundedCornerShape(20.dp))
-            .background(brush = Brush.verticalGradient(gradientColors))
-            .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(20.dp))
-            .padding(24.dp),
-        contentAlignment = Alignment.Center
+            .fillMaxWidth()
+            .height(150.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(LcdBackground)
+            .border(2.dp, LcdBezel, RoundedCornerShape(16.dp))
+            .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                text = if (state.power) "${viewModel.celsiusToFahrenheit(state.tempCelsius)}°F" else "OFF",
-                fontSize = 48.sp,
-                fontWeight = FontWeight.Light,
-                color = if (state.power) Color.White else Color.White.copy(alpha = 0.4f)
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = state.mode.name,
-                fontSize = 14.sp,
-                color = if (state.power) Color(0xFF90CAF9) else Color.White.copy(alpha = 0.2f)
-            )
-            Text(
-                text = "Fan: ${state.fanSpeed.displayName()}",
-                fontSize = 12.sp,
-                color = Color.White.copy(alpha = if (state.power) 0.5f else 0.2f)
-            )
+        Column(modifier = Modifier.fillMaxSize()) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "MODE ${state.mode.displayName.uppercase()}",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = if (on) LcdOn else LcdDim
+                )
+                Text(
+                    text = "FAN ${state.fanSpeed.displayName}",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = if (on) LcdOn else LcdDim
+                )
+            }
+            Spacer(modifier = Modifier.weight(1f))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.Bottom,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                if (on) {
+                    Text(
+                        text = "${state.tempFahrenheit}°F",
+                        fontSize = 56.sp,
+                        fontWeight = FontWeight.Light,
+                        color = LcdOn
+                    )
+                } else {
+                    Text(
+                        text = "OFF",
+                        fontSize = 56.sp,
+                        fontWeight = FontWeight.Light,
+                        color = LcdDim
+                    )
+                }
+                Text(
+                    text = "°F",
+                    fontSize = 14.sp,
+                    color = if (on) LcdOn else LcdDim
+                )
+            }
         }
     }
 }
 
 @Composable
 private fun PowerButton(isOn: Boolean, onClick: () -> Unit) {
-    val bgColor by animateColorAsState(
-        if (isOn) Color(0xFF2196F3) else Color(0xFF424242),
-        label = "powerColor"
-    )
-    Button(
+    RubberButton(
         onClick = onClick,
-        modifier = Modifier.size(80.dp),
+        containerColor = PowerRed,
+        contentColor = Color.White,
         shape = CircleShape,
-        colors = ButtonDefaults.buttonColors(containerColor = bgColor),
-        contentPadding = PaddingValues(0.dp)
+        modifier = Modifier.size(84.dp)
     ) {
         Text(
             text = if (isOn) "ON" else "OFF",
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color.White
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold
         )
     }
 }
 
 @Composable
-private fun ModeAndFanRow(
-    state: com.example.friedrichremote.ir.AcState,
+private fun ModeFanSwingRow(
+    state: AcState,
     viewModel: RemoteViewModel,
     irTransmitter: IrTransmitter
 ) {
@@ -173,32 +200,42 @@ private fun ModeAndFanRow(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally)
     ) {
-        ControlButton(
-            label = "MODE",
-            value = state.mode.displayName(),
-            enabled = state.power,
+        RubberButton(
             onClick = {
                 viewModel.onModePress()
                 viewModel.lastPattern.value?.let { irTransmitter.transmit(it) }
             },
-            modifier = Modifier.weight(1f)
-        )
-        ControlButton(
-            label = "FAN",
-            value = state.fanSpeed.displayName(),
             enabled = state.power,
+            modifier = Modifier.weight(1f).height(72.dp)
+        ) {
+            LabeledValue("MODE", state.mode.displayName.uppercase())
+        }
+        RubberButton(
             onClick = {
                 viewModel.onFanSpeedPress()
                 viewModel.lastPattern.value?.let { irTransmitter.transmit(it) }
             },
-            modifier = Modifier.weight(1f)
-        )
+            enabled = state.power,
+            modifier = Modifier.weight(1f).height(72.dp)
+        ) {
+            LabeledValue("FAN", state.fanSpeed.displayName)
+        }
+        RubberButton(
+            onClick = {
+                viewModel.onSwingToggle()
+                viewModel.lastPattern.value?.let { irTransmitter.transmit(it) }
+            },
+            enabled = state.power,
+            modifier = Modifier.weight(1f).height(72.dp)
+        ) {
+            LabeledValue("SWING", if (state.swing) "ON" else "OFF")
+        }
     }
 }
 
 @Composable
 private fun TempControl(
-    state: com.example.friedrichremote.ir.AcState,
+    state: AcState,
     viewModel: RemoteViewModel,
     irTransmitter: IrTransmitter
 ) {
@@ -207,116 +244,101 @@ private fun TempControl(
         horizontalArrangement = Arrangement.spacedBy(24.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        TempButton(
-            label = "\u25BC",
-            enabled = state.power && state.tempCelsius > LgAcProtocol.MIN_TEMP_C,
+        RubberButton(
             onClick = {
                 viewModel.onTempDown()
                 viewModel.lastPattern.value?.let { irTransmitter.transmit(it) }
-            }
-        )
-        Button(
-            onClick = {},
-            enabled = false,
-            modifier = Modifier.width(100.dp).height(56.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(
-                disabledContainerColor = Color.White.copy(alpha = 0.1f),
-                disabledContentColor = Color.White
-            )
+            },
+            enabled = state.power && state.tempFahrenheit > LgAcProtocol.MIN_TEMP_F,
+            shape = CircleShape,
+            modifier = Modifier.size(56.dp)
         ) {
-            Text(
-                text = if (state.power) "${viewModel.celsiusToFahrenheit(state.tempCelsius)}°F" else "---",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Medium
-            )
+            Text("\u25BC", fontSize = 20.sp, fontWeight = FontWeight.Bold)
         }
-        TempButton(
-            label = "\u25B2",
-            enabled = state.power && state.tempCelsius < LgAcProtocol.MAX_TEMP_C,
+        Text(
+            text = if (state.power) "${state.tempFahrenheit}°F" else "---",
+            fontSize = 28.sp,
+            fontWeight = FontWeight.Medium,
+            color = if (state.power) ButtonText else ButtonText.copy(alpha = 0.35f),
+            modifier = Modifier.width(96.dp),
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+        )
+        RubberButton(
             onClick = {
                 viewModel.onTempUp()
                 viewModel.lastPattern.value?.let { irTransmitter.transmit(it) }
-            }
-        )
+            },
+            enabled = state.power && state.tempFahrenheit < LgAcProtocol.MAX_TEMP_F,
+            shape = CircleShape,
+            modifier = Modifier.size(56.dp)
+        ) {
+            Text("\u25B2", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+        }
     }
 }
 
 @Composable
-private fun ControlButton(
-    label: String,
-    value: String,
-    enabled: Boolean,
+private fun LabeledValue(label: String, value: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(label, fontSize = 11.sp, color = ButtonText.copy(alpha = 0.55f))
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(value, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+    }
+}
+
+@Composable
+private fun RubberButton(
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    enabled: Boolean = true,
+    modifier: Modifier = Modifier,
+    shape: Shape = RoundedCornerShape(12.dp),
+    containerColor: Color = ButtonGrey,
+    contentColor: Color = ButtonText,
+    content: @Composable () -> Unit
 ) {
     Button(
         onClick = onClick,
         enabled = enabled,
-        modifier = modifier.height(72.dp),
-        shape = RoundedCornerShape(12.dp),
+        modifier = modifier
+            .shadow(3.dp, shape)
+            .border(1.dp, ButtonBorder, shape),
+        shape = shape,
         colors = ButtonDefaults.buttonColors(
-            containerColor = Color(0xFF1A3A5C),
-            disabledContainerColor = Color(0xFF1A1A2E)
-        )
+            containerColor = containerColor,
+            contentColor = contentColor,
+            disabledContainerColor = containerColor.copy(alpha = 0.45f),
+            disabledContentColor = contentColor.copy(alpha = 0.4f)
+        ),
+        elevation = ButtonDefaults.buttonElevation(
+            defaultElevation = 0.dp,
+            pressedElevation = 0.dp,
+            disabledElevation = 0.dp
+        ),
+        contentPadding = PaddingValues(8.dp)
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(label, fontSize = 11.sp, color = Color.White.copy(alpha = 0.5f))
-            Text(value, fontSize = 16.sp, fontWeight = FontWeight.Medium, color = Color.White)
-        }
+        content()
     }
 }
 
 @Composable
-private fun TempButton(label: String, enabled: Boolean, onClick: () -> Unit) {
-    Button(
-        onClick = onClick,
-        enabled = enabled,
-        modifier = Modifier.size(56.dp),
-        shape = CircleShape,
-        colors = ButtonDefaults.buttonColors(
-            containerColor = Color(0xFF1A3A5C),
-            disabledContainerColor = Color(0xFF1A1A2E)
-        )
-    ) {
-        Text(label, fontSize = 20.sp, color = Color.White)
-    }
-}
-
-@Composable
-private fun StatusBar(hasIr: Boolean, protocolVariant: ProtocolVariant, powerCode: Int, onToggleVariant: () -> Unit, onTogglePowerCode: () -> Unit) {
+private fun SettingsStrip(hasIr: Boolean) {
     Surface(
-        color = Color(0xFF1A2A3A),
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp)
+        color = Color(0xFFEAEAEA),
+        shape = RoundedCornerShape(14.dp),
+        shadowElevation = 2.dp,
+        modifier = Modifier.fillMaxWidth()
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("\u2713" , color = if (hasIr) Color(0xFF4CAF50) else Color(0xFFFF5722), fontSize = 14.sp)
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(if (hasIr) "IR" else "No IR", color = Color.White.copy(alpha = 0.7f), fontSize = 11.sp)
-            }
-            Button(
-                onClick = onTogglePowerCode,
-                colors = ButtonDefaults.buttonColors(containerColor = when (powerCode) { 1 -> Color(0xFF4CAF50); 2 -> Color(0xFFFF9800); else -> Color(0xFF555555) }),
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
-            ) {
-                Text("P$powerCode", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
-            }
-            Button(
-                onClick = onToggleVariant,
-                colors = ButtonDefaults.buttonColors(containerColor = if (protocolVariant == ProtocolVariant.LG2) Color(0xFF4CAF50) else Color(0xFF555555)),
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
-            ) {
-                Text(protocolVariant.name, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
-            }
+            Text(
+                text = if (hasIr) "IR ✓" else "No IR",
+                fontSize = 12.sp,
+                color = if (hasIr) Color(0xFF2E7D5B) else Color(0xFFE5533C),
+                fontWeight = FontWeight.Medium
+            )
         }
     }
 }
-
-private fun Mode.displayName(): String = when (this) { Mode.COOL -> "Cool"; Mode.DRY -> "Dry"; Mode.FAN -> "Fan"; Mode.HEAT -> "Heat"; Mode.AUTO -> "Auto" }
-private fun FanSpeed.displayName(): String = when (this) { FanSpeed.LOWEST -> "F1"; FanSpeed.LOW -> "F1"; FanSpeed.MEDIUM -> "F2"; FanSpeed.HIGH -> "F3"; FanSpeed.AUTO -> "AUTO" }

@@ -7,10 +7,10 @@ Uses the LG 28-bit IR protocol at 38kHz — the same protocol as the OEM Friedri
 ## Features
 
 - **Power ON/OFF** — turns the AC on and off
-- **Mode control** — COOL, DRY, FAN
-- **Temperature** — 16–30°C (60–86°F), displayed in Fahrenheit
+- **Mode control** — COOL, Money Saver, Fan Only, Dry
+- **Temperature** — 60–86°F
 - **Fan speed** — F1, F2, F3
-- **LG/LG2 timing** — toggle between protocol timing variants
+- **Swing** — toggles auto-swing on/off
 
 ## Requirements
 
@@ -30,14 +30,15 @@ Uses the LG 28-bit IR protocol at 38kHz — the same protocol as the OEM Friedri
 
 ## How It Works
 
-The app generates LG 28-bit infrared codes and sends them via Android's `ConsumerIrManager` API. The IR protocol was reverse-engineered using the [IRremoteESP8266](https://github.com/crankyoldgit/IRremoteESP8266) library as reference.
+The app generates LG 28-bit infrared codes and sends them via Android's `ConsumerIrManager` API. The IR protocol was reverse-engineered by capturing the OEM Friedrich remote with an IR receiver (see `tools/pibeam_capture.py`).
 
 ### Confirmed codes
 
 | Command | Hex Code | Description |
 |---------|----------|-------------|
 | Power OFF | `0x88C0051` | Turns AC off |
-| Power ON | `0x8800123` | COOL, 16°C, F2 fan |
+| Power ON | `0x8820103` | COOL, 60°F, F1 fan |
+| Swing | `0x8813004` | Auto-swing toggle |
 
 ## Build
 
