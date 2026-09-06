@@ -1,4 +1,4 @@
-package com.example.friedrichremote.ui.theme
+package com.lookouter.friedrichacremote.ui.theme
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.lightColorScheme

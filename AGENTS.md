@@ -6,8 +6,9 @@ Single-module Android app (Kotlin + Jetpack Compose) that turns a phone with an 
 
 - Build: `./gradlew assembleDebug`
 - Unit tests (JVM, JUnit4): `./gradlew test`
-- Single test class: `./gradlew :app:testDebugUnitTest --tests "com.example.friedrichremote.ir.LgAcProtocolTest"`
+- Single test class: `./gradlew :app:testDebugUnitTest --tests "com.lookouter.friedrichacremote.ir.LgAcProtocolTest"`
 - AGP requires an Android SDK; set `ANDROID_HOME` or create a gitignored `local.properties` with `sdk.dir`. There is no CI, lint config, or formatter config.
+- WSL build env: JDK at `~/jdks/jdk-21.0.12.1+1` (Temurin 21, user-space — no sudo available) and SDK at `~/android-sdk`; `local.properties` already has `sdk.dir=/home/yijin/android-sdk`. Run gradle with `export JAVA_HOME=$HOME/jdks/jdk-21.0.12.1+1`.
 - Gradle daemon runs on JVM toolchain 21 (see `gradle/gradle-daemon-jvm.properties`, resolved via the foojay resolver — needs network on first run); app bytecode targets Java 17.
 
 ## Architecture
@@ -27,7 +28,7 @@ Bit layout: `0x88 << 20 | 1 << 17 | change << 15 | mode << 12 | temp | fan << 4 
 - `1 << 17` is the always-set "on" flag; power bits 19-18 are 0 when on. checksum (bits 3-0) = `sumNibbles(code >> 4, 4) & 0xF` (sum of nibbles 1-4).
 
 - `OFF_COMMAND = 0x88C0051` (power off) and `SWING_TOGGLE = 0x8813004` (auto-swing; both on/off presses send the same code) are special codes, not built from `AcState`. The UI powers on via `buildPowerOnPattern`; mode/fan/temp presses use `buildPattern`; swing sends `codeToTimingPattern(SWING_TOGGLE)`.
-- Each code is transmitted **once** (single data frame, no repeat frame) — the OEM remote does not send a repeat frame on a single press, and sending more than one makes the AC beep multiple times.
+- Each code is transmitted **once** (single data frame, no repeat frame) — the OEM remote does not send a repeat frame on a single press, and sending more than one makes the AC beep multiple times. `IrTransmitter.transmitTwice` exists but is unused; don't switch the UI to it.
 - Known-good regression codes in `LgAcProtocolTest` (e.g. `0x882810B`) come from real captures of the OEM remote and should stay stable.
 - UI stores temperature in °F (`AcState.tempFahrenheit`, 60–86); there is no °C anywhere anymore.
 

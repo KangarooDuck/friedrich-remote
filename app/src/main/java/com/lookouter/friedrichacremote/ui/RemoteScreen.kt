@@ -1,4 +1,4 @@
-package com.example.friedrichremote.ui
+package com.lookouter.friedrichacremote.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -20,9 +20,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.friedrichremote.ir.AcState
-import com.example.friedrichremote.ir.IrTransmitter
-import com.example.friedrichremote.ir.LgAcProtocol
+import com.lookouter.friedrichacremote.ir.AcState
+import com.lookouter.friedrichacremote.ir.IrTransmitter
+import com.lookouter.friedrichacremote.ir.LgAcProtocol
 
 private val WallBackground = Color(0xFFC6CDD4)
 private val RemoteTop = Color(0xFFF6F6F6)

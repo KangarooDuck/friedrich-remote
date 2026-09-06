@@ -1,9 +1,9 @@
-package com.example.friedrichremote.ui
+package com.lookouter.friedrichacremote.ui
 
-import com.example.friedrichremote.ir.AcState
-import com.example.friedrichremote.ir.FanSpeed
-import com.example.friedrichremote.ir.LgAcProtocol
-import com.example.friedrichremote.ir.Mode
+import com.lookouter.friedrichacremote.ir.AcState
+import com.lookouter.friedrichacremote.ir.FanSpeed
+import com.lookouter.friedrichacremote.ir.LgAcProtocol
+import com.lookouter.friedrichacremote.ir.Mode
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

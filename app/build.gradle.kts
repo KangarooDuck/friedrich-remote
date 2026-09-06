@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.friedrichremote"
+    namespace = "com.lookouter.friedrichacremote"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.example.friedrichremote"
+        applicationId = "com.lookouter.friedrichacremote"
         minSdk = 26
         targetSdk = 35
         versionCode = 1

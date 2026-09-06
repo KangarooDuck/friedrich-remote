@@ -1,10 +1,10 @@
-package com.example.friedrichremote
+package com.lookouter.friedrichacremote
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import com.example.friedrichremote.ui.RemoteScreen
-import com.example.friedrichremote.ui.theme.FriedrichRemoteTheme
+import com.lookouter.friedrichacremote.ui.RemoteScreen
+import com.lookouter.friedrichacremote.ui.theme.FriedrichRemoteTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

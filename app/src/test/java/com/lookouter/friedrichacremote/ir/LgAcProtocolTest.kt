@@ -1,4 +1,4 @@
-package com.example.friedrichremote.ir
+package com.lookouter.friedrichacremote.ir
 
 import org.junit.Assert.*
 import org.junit.Test

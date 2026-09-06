@@ -1,4 +1,4 @@
-package com.example.friedrichremote.ir
+package com.lookouter.friedrichacremote.ir
 
 import android.util.Log
 

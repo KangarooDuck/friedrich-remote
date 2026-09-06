@@ -1,9 +1,9 @@
-package com.example.friedrichremote
+package com.lookouter.friedrichacremote
 
-import com.example.friedrichremote.ir.FanSpeed
-import com.example.friedrichremote.ir.LgAcProtocol
-import com.example.friedrichremote.ir.Mode
-import com.example.friedrichremote.ui.RemoteViewModel
+import com.lookouter.friedrichacremote.ir.FanSpeed
+import com.lookouter.friedrichacremote.ir.LgAcProtocol
+import com.lookouter.friedrichacremote.ir.Mode
+import com.lookouter.friedrichacremote.ui.RemoteViewModel
 import org.junit.Assert.*
 import org.junit.Test
 
