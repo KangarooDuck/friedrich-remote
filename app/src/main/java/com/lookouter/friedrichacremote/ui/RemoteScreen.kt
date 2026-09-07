@@ -56,6 +56,10 @@ fun RemoteScreen() {
         }
     }
 
+    if (!hasIr) {
+        NoIrDialog()
+    }
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = WallBackground
@@ -69,10 +73,25 @@ fun RemoteScreen() {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            RemoteBody(state, viewModel, irTransmitter)
-            Spacer(modifier = Modifier.height(20.dp))
-            SettingsStrip(hasIr = hasIr)
+            RemoteBody(state, viewModel, irTransmitter, hasIr)
         }
+    }
+}
+
+@Composable
+private fun NoIrDialog() {
+    var show by remember { mutableStateOf(true) }
+    if (show) {
+        AlertDialog(
+            onDismissRequest = { show = false },
+            title = { Text("No IR Blaster") },
+            text = {
+                Text("This device has no infrared blaster, so it cannot control the air conditioner.")
+            },
+            confirmButton = {
+                TextButton(onClick = { show = false }) { Text("OK") }
+            }
+        )
     }
 }
 
@@ -80,7 +99,8 @@ fun RemoteScreen() {
 private fun RemoteBody(
     state: AcState,
     viewModel: RemoteViewModel,
-    irTransmitter: IrTransmitter
+    irTransmitter: IrTransmitter,
+    hasIr: Boolean
 ) {
     Column(
         modifier = Modifier
@@ -97,6 +117,7 @@ private fun RemoteBody(
 
         PowerButton(
             isOn = state.power,
+            enabled = hasIr,
             onClick = {
                 viewModel.onPowerToggle()
                 viewModel.lastPattern.value?.let { irTransmitter.transmit(it) }
@@ -104,10 +125,10 @@ private fun RemoteBody(
         )
         Spacer(modifier = Modifier.height(20.dp))
 
-        ModeFanSwingRow(state, viewModel, irTransmitter)
+        ModeFanSwingRow(state, viewModel, irTransmitter, hasIr)
         Spacer(modifier = Modifier.height(16.dp))
 
-        TempControl(state, viewModel, irTransmitter)
+        TempControl(state, viewModel, irTransmitter, hasIr)
     }
 }
 
@@ -174,17 +195,18 @@ private fun LcdPanel(state: AcState, viewModel: RemoteViewModel) {
 }
 
 @Composable
-private fun PowerButton(isOn: Boolean, onClick: () -> Unit) {
+private fun PowerButton(isOn: Boolean, enabled: Boolean, onClick: () -> Unit) {
     RubberButton(
         onClick = onClick,
+        enabled = enabled,
         containerColor = PowerRed,
         contentColor = Color.White,
-        shape = CircleShape,
-        modifier = Modifier.size(84.dp)
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier.fillMaxWidth().height(48.dp)
     ) {
         Text(
-            text = if (isOn) "ON" else "OFF",
-            fontSize = 18.sp,
+            text = if (isOn) "POWER ON" else "POWER OFF",
+            fontSize = 16.sp,
             fontWeight = FontWeight.Bold
         )
     }
@@ -194,7 +216,8 @@ private fun PowerButton(isOn: Boolean, onClick: () -> Unit) {
 private fun ModeFanSwingRow(
     state: AcState,
     viewModel: RemoteViewModel,
-    irTransmitter: IrTransmitter
+    irTransmitter: IrTransmitter,
+    hasIr: Boolean
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -205,8 +228,8 @@ private fun ModeFanSwingRow(
                 viewModel.onModePress()
                 viewModel.lastPattern.value?.let { irTransmitter.transmit(it) }
             },
-            enabled = state.power,
-            modifier = Modifier.weight(1f).height(72.dp)
+            enabled = state.power && hasIr,
+            modifier = Modifier.weight(1f).height(144.dp)
         ) {
             LabeledValue("MODE", state.mode.displayName.uppercase())
         }
@@ -215,8 +238,8 @@ private fun ModeFanSwingRow(
                 viewModel.onFanSpeedPress()
                 viewModel.lastPattern.value?.let { irTransmitter.transmit(it) }
             },
-            enabled = state.power,
-            modifier = Modifier.weight(1f).height(72.dp)
+            enabled = state.power && hasIr,
+            modifier = Modifier.weight(1f).height(144.dp)
         ) {
             LabeledValue("FAN", state.fanSpeed.displayName)
         }
@@ -225,8 +248,8 @@ private fun ModeFanSwingRow(
                 viewModel.onSwingToggle()
                 viewModel.lastPattern.value?.let { irTransmitter.transmit(it) }
             },
-            enabled = state.power,
-            modifier = Modifier.weight(1f).height(72.dp)
+            enabled = state.power && hasIr,
+            modifier = Modifier.weight(1f).height(144.dp)
         ) {
             LabeledValue("SWING", if (state.swing) "ON" else "OFF")
         }
@@ -237,7 +260,8 @@ private fun ModeFanSwingRow(
 private fun TempControl(
     state: AcState,
     viewModel: RemoteViewModel,
-    irTransmitter: IrTransmitter
+    irTransmitter: IrTransmitter,
+    hasIr: Boolean
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -249,7 +273,7 @@ private fun TempControl(
                 viewModel.onTempDown()
                 viewModel.lastPattern.value?.let { irTransmitter.transmit(it) }
             },
-            enabled = state.power && state.tempFahrenheit > LgAcProtocol.MIN_TEMP_F,
+            enabled = state.power && hasIr && state.tempFahrenheit > LgAcProtocol.MIN_TEMP_F,
             shape = CircleShape,
             modifier = Modifier.size(56.dp)
         ) {
@@ -268,7 +292,7 @@ private fun TempControl(
                 viewModel.onTempUp()
                 viewModel.lastPattern.value?.let { irTransmitter.transmit(it) }
             },
-            enabled = state.power && state.tempFahrenheit < LgAcProtocol.MAX_TEMP_F,
+            enabled = state.power && hasIr && state.tempFahrenheit < LgAcProtocol.MAX_TEMP_F,
             shape = CircleShape,
             modifier = Modifier.size(56.dp)
         ) {
@@ -281,8 +305,14 @@ private fun TempControl(
 private fun LabeledValue(label: String, value: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(label, fontSize = 11.sp, color = ButtonText.copy(alpha = 0.55f))
-        Spacer(modifier = Modifier.height(2.dp))
-        Text(value, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            value,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            maxLines = 2
+        )
     }
 }
 
@@ -317,28 +347,5 @@ private fun RubberButton(
         contentPadding = PaddingValues(8.dp)
     ) {
         content()
-    }
-}
-
-@Composable
-private fun SettingsStrip(hasIr: Boolean) {
-    Surface(
-        color = Color(0xFFEAEAEA),
-        shape = RoundedCornerShape(14.dp),
-        shadowElevation = 2.dp,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = if (hasIr) "IR ✓" else "No IR",
-                fontSize = 12.sp,
-                color = if (hasIr) Color(0xFF2E7D5B) else Color(0xFFE5533C),
-                fontWeight = FontWeight.Medium
-            )
-        }
     }
 }
