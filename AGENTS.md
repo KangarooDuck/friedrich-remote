@@ -9,6 +9,9 @@ Single-module Android app (Kotlin + Jetpack Compose) that turns a phone with an 
 - Single test class: `./gradlew :app:testDebugUnitTest --tests "com.lookouter.friedrichacremote.ir.LgAcProtocolTest"`
 - AGP requires an Android SDK; set `ANDROID_HOME` or create a gitignored `local.properties` with `sdk.dir`. There is no CI, lint config, or formatter config.
 - WSL build env: JDK at `~/jdks/jdk-21.0.12.1+1` (Temurin 21, user-space — no sudo available) and SDK at `~/android-sdk`; `local.properties` already has `sdk.dir=/home/yijin/android-sdk`. Run gradle with `export JAVA_HOME=$HOME/jdks/jdk-21.0.12.1+1`.
+- Android Studio (Windows) overwrites `local.properties` with a Windows SDK path that breaks WSL builds ("SDK location not found"). Before running gradle in WSL, reset it: `printf 'sdk.dir=/home/yijin/android-sdk\n' > local.properties`.
+- Play requires `targetSdk` >= 36 (`compileSdk`/`targetSdk` in `app/build.gradle.kts`); bump `versionCode` for every Play upload.
+- Play review flags releases built without R8 ("code optimization below threshold"). Keep `isMinifyEnabled`/`isShrinkResources` = true in the release build type; don't disable minify to speed up builds.
 - Gradle daemon runs on JVM toolchain 21 (see `gradle/gradle-daemon-jvm.properties`, resolved via the foojay resolver — needs network on first run); app bytecode targets Java 17.
 
 ## Architecture
